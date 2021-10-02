@@ -83,7 +83,7 @@ class Model {
 	 * @return string
 	 */
 	public function getLicenseKeyOptionName() {
-		$name = sprintf( '%s_plugin_%s', $this->prefix, $this->id );
+		$name = sprintf( '%s_product_key_%s', $this->prefix, $this->id );
 
 		return apply_filters( 'dlm_updater_license_key_option_name', $name, $this );
 	}

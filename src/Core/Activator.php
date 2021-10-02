@@ -33,16 +33,21 @@ class Activator {
 	 */
 	public function __construct( $application ) {
 
-		if ( isset( $_GET['dlm_clear_cache'] ) ) {
+		$this->application = $application;
+
+		if ( isset( $_GET[ $this->application->getPrefix() . '_clear_cache' ] ) ) {
 			$this->clearCache = true;
 		}
 
 		$this->is_http_post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
-		if( is_a($this->application->getEntity(), Plugin::class)) {
-			register_activation_hook( $this->application->getEntity()->getFile(), array($this, 'handleAfterActivation') );
+		if ( is_a( $this->application->getEntity(), Plugin::class ) ) {
+			register_activation_hook( $this->application->getEntity()->getFile(), array(
+				$this,
+				'handleAfterActivation'
+			) );
 		} else {
-			add_action('after_setup_theme', array($this, 'handleAfterActivation'));
+			add_action( 'after_setup_theme', array( $this, 'handleAfterActivation' ) );
 		}
 
 		add_action( 'init', array( $this, 'handleLicneseActivation' ) );
@@ -135,25 +140,28 @@ class Activator {
 		$plugin_id  = isset( $data['plugin_id'] ) ? (int) $data['plugin_id'] : null;
 
 		// Check the plugin
-		if ( $plugin_id !==  $this->application->getEntity()->getId() ) {
+		if ( $plugin_id !== $this->application->getEntity()->getId() ) {
 			return;
 		}
 
 		// Check the permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
 			$this->setFlashMessage( 'error', __( 'Sorry, you dont have enough permissions to manage those settings.' ) );
+
 			return;
 		}
 
 		// Check the actions
 		if ( ! in_array( $action, array( 'activate', 'deactivate' ) ) ) {
 			$this->setFlashMessage( 'error', __( 'Invalid action.' ) );
+
 			return;
 		}
 
 		// Validate license key
 		if ( empty( $licenseKey ) ) {
 			$this->setFlashMessage( 'error', __( 'Please provide valid product key.' ) );
+
 			return;
 		}
 
@@ -204,7 +212,7 @@ class Activator {
 
 		// Find existing license?
 		$token       = $this->application->getEntity()->getActivationToken();
-		$license     = $this->application->getClient()->prepareLicense( $token );
+		$license     = $this->application->getClient()->prepareValidateLicense( $token );
 		$is_expired  = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 		$expires_at  = isset( $license['license']['expires_at'] ) ? $license['license']['expires_at'] : '';
 		$license_key = isset( $license['license']['license_key'] ) ? $license['license']['license_key'] : '';
@@ -213,12 +221,12 @@ class Activator {
 		// Setup activation/deactivation form
 		if ( ! $is_expired ) {
 			$expires_at = Utilities::getFormattedDate( $expires_at );
-			$message    = sprintf( 'License %s. Expires on %s (%s days remaining)', '<span class="cv-success">valid</span>', $expires_at['default_format'], $expires_at['remaining_days'] );
+			$message    = sprintf( 'License %s. Expires on %s (%s days remaining)', '<span class="dlm-success">valid</span>', $expires_at['default_format'], $expires_at['remaining_days'] );
 			$button     = __( 'Deactivate' );
 			$action     = 'deactivate';
 		} else {
 			if ( $token ) {
-				$message = sprintf( 'Your license is %s. To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.', '<span class="cv-error">expired</span> or invalid', $this->application->getEntity()->getPurchaseUrl() );
+				$message = sprintf( __( 'Your license is %s. To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.' ), '<span class="dlm-error">expired</span> or invalid', $this->application->getEntity()->getPurchaseUrl() );
 			}
 			$button = __( 'Activate' );
 			$action = 'activate';

@@ -33,7 +33,7 @@ class Main {
 	 *
 	 * @throws \Exception
 	 */
-	public function __constructor( $args, $config = array() ) {
+	public function __construct( $args, $config = array() ) {
 		$this->application = new Application( $args );
 		$this->activator   = new Activator( $this->application );
 		$this->updater     = new Updater( $this->application );

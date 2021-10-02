@@ -53,16 +53,17 @@ class Utilities {
 
 	/**
 	 * Extract specific array keys
+	 *
 	 * @param $arr
 	 * @param $keys
 	 *
 	 * @return array
 	 */
-	public static function arrayOnly($arr, $keys) {
+	public static function arrayOnly( $arr, $keys ) {
 		$newArr = array();
-		foreach($keys as $key) {
-			if(isset($arr[$key])) {
-				$newArr[$key] = $arr[$key];
+		foreach ( $keys as $key ) {
+			if ( isset( $arr[ $key ] ) ) {
+				$newArr[ $key ] = $arr[ $key ];
 			}
 		}
 		return $newArr;

@@ -22,13 +22,16 @@ class Updater {
 
 		$this->application = $application;
 
-		if(!function_exists('add_filter')) {
-			throw new \Exception('The library is not supported. Please make sure you initialize it within WordPress environment.');
+		if ( ! function_exists( 'add_filter' ) ) {
+			throw new \Exception( 'The library is not supported. Please make sure you initialize it within WordPress environment.' );
 		}
 
 		add_filter( 'plugins_api', array( $this, 'modify_plugin_details' ), 10, 3 );
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_plugins_transient' ), 10, 1 );
-		add_action( 'in_plugin_update_message-' . $this->application->getEntity()->getBasename(), array( $this, 'modify_plugin_update_message' ), 10, 2 );
+		add_action( 'in_plugin_update_message-' . $this->application->getEntity()->getBasename(), array(
+			$this,
+			'modify_plugin_update_message'
+		), 10, 2 );
 	}
 
 	/**
@@ -44,8 +47,8 @@ class Updater {
 
 		echo '<style>.cv-indent-left {padding-left: 25px;}</style>';
 
-		if ( ! empty( $this->activation_token ) ) {
-			$license = $this->application->getClient()->prepareLicense( $this->application->getEntity()->getActivationToken() );
+		if ( ! empty( $this->application->getEntity()->getActivationToken() ) ) {
+			$license = $this->application->getClient()->prepareValidateLicense( $this->application->getEntity()->getActivationToken() );
 			$expired = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 			if ( $expired ) {
 				$expires_at = isset( $license['license']['expires_at'] ) ? $license['license']['expires_at'] : '';
@@ -126,13 +129,11 @@ class Updater {
 			return $result;
 		}
 
-
 		// query api
-		$response = $this->application->getClient()->info( $this->application->getEntity()->getId(), $this->application->getEntity()->getActivationToken(), 'wp' );
-		if ( $response->isError() ) {
+		$response = $this->application->getClient()->prepareInfo( $this->application->getEntity(), 'wp' );
+		if ( empty( $response ) ) {
 			return $result;
 		}
-
 
 		$response = $this->format_plugin_details( $response );
 		if ( ! $response ) {
@@ -148,27 +149,14 @@ class Updater {
 	 *
 	 * @param $force
 	 *
-	 * @return mixed
+	 * @return array
 	 */
 	private function check_update( $force = false ) {
 
-		$transient_key    = $this->application->getClient()->getUpdateCacheKey( $this->application->getEntity()->getId() );
-		$transient_expiry = MINUTE_IN_SECONDS * 40;
+		$update = $this->application->getClient()->prepareInfo( $this->application->getEntity(), 'wp', true, $force );
 
-		// Using Force?
-		if ( $force ) {
-			delete_transient( $transient_key );
-		}
-
-		// Check for updates
-		$update = get_transient( $transient_key );
-		if ( false === $update ) {
-			$update   = array();
-			$response = $this->application->getClient()->info( $this->application->getEntity()->getId(), $this->application->getEntity()->getActivationToken(), 'wp', true );
-			if ( ! $response->isError() ) {
-				$update = $this->format_plugin_update( $response );
-				set_transient( $transient_key, $update, $transient_expiry );
-			}
+		if ( ! empty( $update ) && is_array( $update ) ) {
+			$update = $this->format_plugin_update( $update );
 		}
 
 		return $update;
@@ -177,18 +165,21 @@ class Updater {
 	/**
 	 * Format site update
 	 *
-	 * @param Response $response
+	 * @param array $data
 	 *
 	 * @return array
 	 */
-	private function format_plugin_update( $response ) {
+	private function format_plugin_update( $data ) {
 
-		if ( empty( $response ) ) {
+		if ( empty( $data ) ) {
 			return array();
 		}
 
+		if ( $data instanceof Response ) {
+			$data = $data->getData();
+		}
+
 		$update      = array();
-		$data        = $response->getData();
 		$new_version = isset( $data['details']['stable_tag'] ) ? $data['details']['stable_tag'] : '';
 		$tested      = isset( $data['details']['tested'] ) ? $data['details']['tested'] : '';
 
@@ -220,21 +211,20 @@ class Updater {
 	/**
 	 * Format the plugin details
 	 *
-	 * @param Response $response
+	 * @param array $data
 	 *
 	 * @return null
 	 */
-	private function format_plugin_details( $response ) {
+	private function format_plugin_details( $data ) {
 
-		if ( empty( $response ) ) {
+		if ( empty( $data ) ) {
 			return null;
 		}
 
-		$details = $response->getData( 'details' );
-		if ( empty( $details ) || ! is_array( $details ) ) {
+		if ( empty( $data['details'] ) || ! is_array( $data['details'] ) ) {
 			return null;
 		}
 
-		return $details;
+		return $data['details'];
 	}
 }

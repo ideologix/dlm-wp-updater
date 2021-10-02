@@ -31,17 +31,29 @@ class Client {
 	protected $prefix;
 
 	/**
-	 * WLM_Client constructor.
+	 * The cache TTL
+	 * @var float[]|int[]
+	 */
+	protected $cacheTTL = [
+		'info'            => MINUTE_IN_SECONDS * 15,
+		'validateLicense' => HOUR_IN_SECONDS * 1,
+	];
+
+	/**
+	 * Client constructor.
 	 *
-	 * @param $consumerKey
-	 * @param $consumerSecret
-	 * @param $baseUrl
+	 * @param $args
 	 */
 	public function __construct( $args ) {
 		$this->consumerKey    = isset( $args['consumer_key'] ) ? $args['consumer_key'] : '';
 		$this->consumerSecret = isset( $args['consumer_secret'] ) ? $args['consumer_secret'] : '';
 		$this->baseUrl        = isset( $args['api_url'] ) ? $args['api_url'] : '';
 		$this->prefix         = isset( $args['prefix'] ) ? $args['prefix'] : 'dlm';
+
+		foreach ( $this->cacheTTL as $key => $value ) {
+			$this->cacheTTL[ $key ] = isset( $args[ 'cache_ttl_' . $key ] ) && is_numeric( $args[ 'cache_ttl_' . $key ] ) ? intval( $args[ 'cache_ttl_' . $key ] ) : $this->cacheTTL[ $key ];
+		}
+
 	}
 
 	/**
@@ -57,12 +69,14 @@ class Client {
 
 	/**
 	 * Returns the update cache key
+	 *
+	 * @param Model $entity
+	 *
 	 * @return string
 	 */
-	public function getUpdateCacheKey( $id ) {
-		return sprintf( '%s_update_%s', $this->prefix, $id );
+	public function getUpdateCacheKey( $entity ) {
+		return sprintf( '%s_update_%s_%s', $this->prefix, $entity->getId(), $entity->getVersion() );
 	}
-
 
 	/**
 	 * Returns license
@@ -121,18 +135,19 @@ class Client {
 		return $this->_result( $result, $decode );
 	}
 
-
 	/**
-	 * Deactivate license
+	 * Find remote info
 	 *
-	 * @param $softwareId
-	 * @param null $acitvationToken
+	 * @param $entity
 	 * @param string $type
 	 * @param bool $decode
 	 *
-	 * @return array|\WP_Error
+	 * @return array|Response|\WP_Error
 	 */
-	public function info( $softwareId, $acitvationToken = null, $type = 'wp', $decode = true ) {
+	private function info( $entity, $type = 'wp', $decode = true ) {
+		$softwareId      = $entity->getId();
+		$acitvationToken = $entity->getActivationToken();
+
 		$params = array( 'type' => $type );
 		if ( ! empty( $acitvationToken ) ) {
 			$params['activation_token'] = $acitvationToken;
@@ -140,6 +155,72 @@ class Client {
 		$result = $this->_get( 'software/' . $softwareId, $params );
 
 		return $this->_result( $result, $decode );
+	}
+
+	/**
+	 * Find remote info (Cached)
+	 *
+	 * @param Model $entity
+	 * @param string $type
+	 * @param bool $decode
+	 *
+	 * @return array
+	 */
+	public function prepareInfo( $entity, $type = 'wp', $decode = true, $force = false ) {
+
+		$cacheResp = false;
+		$cacheTTL  = isset( $this->cacheTTL['info'] ) ? $this->cacheTTL['info'] : 0;
+		$transient = $this->getUpdateCacheKey( $entity );
+		$response  = $this->info( $entity, $type, $decode );
+
+		if ( $force || $cacheTTL <= 0 ) {
+			if ( $force && $cacheTTL > 0 ) {
+				$cacheResp = true;
+			}
+		} else {
+			$cacheResp = true;
+		}
+
+		if ( $cacheResp && $cacheTTL > 0 ) {
+			if ( ! $response->isError() ) {
+				set_transient( $transient, $response, $cacheTTL );
+			}
+		}
+
+		return is_a( $response, Response::class ) ? $response->getData() : array();
+	}
+
+	/**
+	 * Retrieve the license
+	 *
+	 * @param $token
+	 * @param bool $decode
+	 * @param bool $force
+	 *
+	 * @return array
+	 */
+	public function prepareValidateLicense( $token, $decode = true, $force = false ) {
+
+		$cacheResp = false;
+		$cacheTTL  = isset( $this->cacheTTL['validateLicense'] ) ? $this->cacheTTL['validateLicense'] : 0;
+		$transient = $this->getLicenseCacheKey( $token );
+		$response  = $this->validateLicense( $token, $decode );
+
+		if ( $force || $cacheTTL <= 0 ) {
+			if ( $force && $cacheTTL > 0 ) {
+				$cacheResp = true;
+			}
+		} else {
+			$cacheResp = true;
+		}
+
+		if ( $cacheResp && $cacheTTL > 0 ) {
+			if ( ! $response->isError() ) {
+				set_transient( $transient, $response, $cacheTTL );
+			}
+		}
+
+		return is_a( $response, Response::class ) ? $response->getData() : array();
 	}
 
 
@@ -221,28 +302,6 @@ class Client {
 	}
 
 	/**
-	 * Retrieve the license
-	 *
-	 * @param $token
-	 *
-	 * @return mixed
-	 * @return mixed
-	 */
-	public function prepareLicense( $token ) {
-		$cacheKey = $this->getLicenseCacheKey( $token );
-		$license  = get_transient( $cacheKey );
-		if ( false === $license ) {
-			$response = $this->validateLicense( $token );
-			if ( ! $response->isError() ) {
-				$license = $response->getData();
-				set_transient( $cacheKey, $license, HOUR_IN_SECONDS );
-			}
-		}
-
-		return $license;
-	}
-
-	/**
 	 * Clear the client cache
 	 *
 	 * @param Model $entity
@@ -255,7 +314,7 @@ class Client {
 			delete_transient( $licenseCacheKey );
 		}
 		// Clear update cache
-		delete_transient( $this->getUpdateCacheKey( $entity->getId() ) );
+		delete_transient( $this->getUpdateCacheKey( $entity ) );
 		// Force update check
 		delete_site_transient( 'update_plugins' );
 	}
