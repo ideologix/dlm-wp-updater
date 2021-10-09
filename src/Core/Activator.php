@@ -2,7 +2,6 @@
 
 namespace IdeoLogix\DigitalLicenseManagerUpdaterWP\Core;
 
-use IdeoLogix\DigitalLicenseManagerUpdaterWP\Application;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Http\Response;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Plugin;
 
@@ -10,9 +9,9 @@ class Activator {
 
 	/**
 	 * The Application
-	 * @var Application
+	 * @var Configuration
 	 */
-	protected $application;
+	protected $configuration;
 
 	/**
 	 * Is plugin cache clear required?
@@ -29,20 +28,20 @@ class Activator {
 	/**
 	 * Activator constructor.
 	 *
-	 * @param Application $application
+	 * @param  Configuration  $configuration
 	 */
-	public function __construct( $application ) {
+	public function __construct( $configuration ) {
 
-		$this->application = $application;
+		$this->configuration = $configuration;
 
-		if ( isset( $_GET[ $this->application->getPrefix() . '_clear_cache' ] ) ) {
+		if ( isset( $_GET[ $this->configuration->getPrefix() . '_clear_cache' ] ) ) {
 			$this->clearCache = true;
 		}
 
 		$this->is_http_post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
-		if ( is_a( $this->application->getEntity(), Plugin::class ) ) {
-			register_activation_hook( $this->application->getEntity()->getFile(), array(
+		if ( is_a( $this->configuration->getEntity(), Plugin::class ) ) {
+			register_activation_hook( $this->configuration->getEntity()->getFile(), array(
 				$this,
 				'handleAfterActivation'
 			) );
@@ -75,8 +74,8 @@ class Activator {
 			return;
 		}
 
-		$licenseKey      = $this->application->getEntity()->getLicenseKey();
-		$activationToken = $this->application->getEntity()->getActivationToken();
+		$licenseKey      = $this->configuration->getEntity()->getLicenseKey();
+		$activationToken = $this->configuration->getEntity()->getActivationToken();
 
 		// 4. Bail if license key empty or not the XXXX-XXXX-XXXX-XXXX format.
 		if ( empty( $licenseKey ) || 19 !== strlen( trim( $licenseKey ) ) ) {
@@ -95,7 +94,7 @@ class Activator {
 		if ( ! $result->isError() ) {
 			$token = $result->getData( 'token' );
 			if ( ! empty( $token ) ) {
-				$this->application->getEntity()->setActivationToken( $token );
+				$this->configuration->getEntity()->setActivationToken( $token );
 				delete_site_transient( 'update_plugins' );
 			}
 		} else {
@@ -108,7 +107,7 @@ class Activator {
 				'wlm_rest_license_activation_limit_reached'
 			);
 			if ( in_array( $result->getCode(), $codes ) ) {
-				$this->application->getEntity()->deleteLicenseKey();
+				$this->configuration->getEntity()->deleteLicenseKey();
 			}
 			error_log( 'CodeVerve Activation: ' . $result->getError() );
 		}
@@ -140,7 +139,7 @@ class Activator {
 		$plugin_id  = isset( $data['plugin_id'] ) ? (int) $data['plugin_id'] : null;
 
 		// Check the plugin
-		if ( $plugin_id !== $this->application->getEntity()->getId() ) {
+		if ( $plugin_id !== $this->configuration->getEntity()->getId() ) {
 			return;
 		}
 
@@ -169,22 +168,22 @@ class Activator {
 			$result = $this->activateLicense( $licenseKey );
 			if ( ! $result->isError() ) {
 				$this->clearCache = true;
-				$this->application->getEntity()->setLicenseKey( $licenseKey );
-				$this->application->getEntity()->setActivationToken( $result->getData( 'token' ) );
+				$this->configuration->getEntity()->setLicenseKey( $licenseKey );
+				$this->configuration->getEntity()->setActivationToken( $result->getData( 'token' ) );
 				$this->setFlashMessage( 'success', __( 'Congrats! Your key is valid and your product will receive future updates.' ) );
 			} else {
-				$this->application->getEntity()->deleteLicenseKey();
-				$this->application->getEntity()->deleteActivationToken();
+				$this->configuration->getEntity()->deleteLicenseKey();
+				$this->configuration->getEntity()->deleteActivationToken();
 				$message = $result->getError();
 				if ( ! empty( $message ) ) {
 					$this->setFlashMessage( 'error', $message );
 				}
 			}
 		} elseif ( 'deactivate' === $action ) {
-			$token  = $this->application->getEntity()->getActivationToken();
+			$token  = $this->configuration->getEntity()->getActivationToken();
 			$result = $this->deactivateLicense( $token );
-			$this->application->getEntity()->deleteLicenseKey();
-			$this->application->getEntity()->deleteActivationToken();
+			$this->configuration->getEntity()->deleteLicenseKey();
+			$this->configuration->getEntity()->deleteActivationToken();
 			if ( ! $result->isError() ) {
 				$this->clearCache = true;
 				$this->setFlashMessage( 'success', __( 'The license key is now removed.' ) );
@@ -211,8 +210,8 @@ class Activator {
 		$this->printFlashedMessage();
 
 		// Find existing license?
-		$token       = $this->application->getEntity()->getActivationToken();
-		$license     = $this->application->getClient()->prepareValidateLicense( $token );
+		$token       = $this->configuration->getEntity()->getActivationToken();
+		$license     = $this->configuration->getClient()->prepareValidateLicense( $token );
 		$is_expired  = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 		$expires_at  = isset( $license['license']['expires_at'] ) ? $license['license']['expires_at'] : '';
 		$license_key = isset( $license['license']['license_key'] ) ? $license['license']['license_key'] : '';
@@ -226,7 +225,7 @@ class Activator {
 			$action     = 'deactivate';
 		} else {
 			if ( $token ) {
-				$message = sprintf( __( 'Your license is %s. To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.' ), '<span class="dlm-error">expired</span> or invalid', $this->application->getEntity()->getPurchaseUrl() );
+				$message = sprintf( __( 'Your license is %s. To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.' ), '<span class="dlm-error">expired</span> or invalid', $this->configuration->getEntity()->getPurchaseUrl() );
 			}
 			$button = __( 'Activate' );
 			$action = 'activate';
@@ -243,10 +242,10 @@ class Activator {
 		echo '</div>';
 		echo '<div class="dlm-activator-row">';
 		echo sprintf( '<input type="hidden" name="%s" value="%s">', $this->getFieldName( 'action' ), $action );
-		echo sprintf( '<input type="hidden" name="%s" value="%s">', $this->getFieldName( 'plugin_id' ), $this->application->getEntity()->getId() );
+		echo sprintf( '<input type="hidden" name="%s" value="%s">', $this->getFieldName( 'plugin_id' ), $this->configuration->getEntity()->getId() );
 		echo sprintf( '<button type="submit" class="%s" name="cv_activator" value="1">%s</button>', $action === 'activate' ? 'button-primary' : 'button', $button );
 		if ( $is_expired ) {
-			echo sprintf( '&nbsp;<a href="%s" class="button-secondary" target="_blank">%s</a>', $this->application->getEntity()->getPurchaseUrl(), 'Purchase' );
+			echo sprintf( '&nbsp;<a href="%s" class="button-secondary" target="_blank">%s</a>', $this->configuration->getEntity()->getPurchaseUrl(), 'Purchase' );
 		}
 		echo '</div>';
 		echo '</form>';
@@ -299,7 +298,7 @@ class Activator {
 	 * @return array|Response|\WP_Error
 	 */
 	private function activateLicense( $key ) {
-		return $this->application->getClient()->activateLicense( $key, array(
+		return $this->configuration->getClient()->activateLicense( $key, array(
 			'label' => home_url(),
 			'meta'  => array( 'php' => PHP_VERSION )
 		) );
@@ -313,7 +312,7 @@ class Activator {
 	 * @return array|Response|\WP_Error
 	 */
 	private function deactivateLicense( $token ) {
-		return $this->application->getClient()->deactivateLicense( $token );
+		return $this->configuration->getClient()->deactivateLicense( $token );
 	}
 
 	/**
@@ -322,8 +321,8 @@ class Activator {
 	private function getPostData() {
 
 		if ( $this->is_http_post ) {
-			if ( isset( $_POST['dlm'][ $this->application->getEntity()->getId() ] ) ) {
-				return $_POST['dlm'][ $this->application->getEntity()->getId() ];
+			if ( isset( $_POST['dlm'][ $this->configuration->getEntity()->getId() ] ) ) {
+				return $_POST['dlm'][ $this->configuration->getEntity()->getId() ];
 			}
 		}
 
@@ -338,7 +337,7 @@ class Activator {
 	 * @return string
 	 */
 	private function getFieldName( $key ) {
-		return 'dlm[' . $this->application->getEntity()->getId() . '][' . $key . ']';
+		return 'dlm[' . $this->configuration->getEntity()->getId() . '][' . $key . ']';
 	}
 
 	/**
@@ -384,7 +383,7 @@ class Activator {
 	 * Destroy the cached data.
 	 */
 	private function doClearCache() {
-		$this->application->clearCache();
+		$this->configuration->clearCache();
 	}
 
 }

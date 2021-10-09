@@ -2,25 +2,25 @@
 
 namespace IdeoLogix\DigitalLicenseManagerUpdaterWP\Core;
 
-use IdeoLogix\DigitalLicenseManagerUpdaterWP\Application;
+use IdeoLogix\DigitalLicenseManagerUpdaterWP\Core\Configuration;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Http\Response;
 
 class Updater {
 
 	/**
 	 * The Application
-	 * @var Application
+	 * @var Configuration
 	 */
-	protected $application;
+	protected $configuration;
 
 	/**
 	 * Updater constructor.
 	 *
-	 * @param Application $application
+	 * @param Configuration $configuration
 	 */
-	public function __construct( $application ) {
+	public function __construct( $configuration ) {
 
-		$this->application = $application;
+		$this->configuration = $configuration;
 
 		if ( ! function_exists( 'add_filter' ) ) {
 			throw new \Exception( 'The library is not supported. Please make sure you initialize it within WordPress environment.' );
@@ -28,7 +28,7 @@ class Updater {
 
 		add_filter( 'plugins_api', array( $this, 'modify_plugin_details' ), 10, 3 );
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_plugins_transient' ), 10, 1 );
-		add_action( 'in_plugin_update_message-' . $this->application->getEntity()->getBasename(), array(
+		add_action( 'in_plugin_update_message-' . $this->configuration->getEntity()->getBasename(), array(
 			$this,
 			'modify_plugin_update_message'
 		), 10, 2 );
@@ -42,13 +42,13 @@ class Updater {
 	 */
 	public function modify_plugin_update_message( $plugin_data, $response ) {
 
-		$purchaseUrl = $this->application->getEntity()->getPurchaseUrl();
-		$settingsUrl = $this->application->getEntity()->getSettingsUrl();
+		$purchaseUrl = $this->configuration->getEntity()->getPurchaseUrl();
+		$settingsUrl = $this->configuration->getEntity()->getSettingsUrl();
 
 		echo '<style>.cv-indent-left {padding-left: 25px;}</style>';
 
-		if ( ! empty( $this->application->getEntity()->getActivationToken() ) ) {
-			$license = $this->application->getClient()->prepareValidateLicense( $this->application->getEntity()->getActivationToken() );
+		if ( ! empty( $this->configuration->getEntity()->getActivationToken() ) ) {
+			$license = $this->configuration->getClient()->prepareValidateLicense( $this->configuration->getEntity()->getActivationToken() );
 			$expired = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 			if ( $expired ) {
 				$expires_at = isset( $license['license']['expires_at'] ) ? $license['license']['expires_at'] : '';
@@ -94,7 +94,7 @@ class Updater {
 
 		// append
 		if ( is_array( $update ) && isset( $update['new_version'] ) ) {
-			$transient->response[ $this->application->getEntity()->getBasename() ] = (object) $update;
+			$transient->response[ $this->configuration->getEntity()->getBasename() ] = (object) $update;
 		}
 
 		// return
@@ -125,12 +125,12 @@ class Updater {
 		} else {
 			$slug = '';
 		}
-		if ( $this->application->getEntity()->getSlug() !== $slug ) {
+		if ( $this->configuration->getEntity()->getSlug() !== $slug ) {
 			return $result;
 		}
 
 		// query api
-		$response = $this->application->getClient()->prepareInfo( $this->application->getEntity(), 'wp' );
+		$response = $this->configuration->getClient()->prepareInfo( $this->configuration->getEntity(), 'wp' );
 		if ( empty( $response ) ) {
 			return $result;
 		}
@@ -153,7 +153,7 @@ class Updater {
 	 */
 	private function check_update( $force = false ) {
 
-		$update = $this->application->getClient()->prepareInfo( $this->application->getEntity(), 'wp', true, $force );
+		$update = $this->configuration->getClient()->prepareInfo( $this->configuration->getEntity(), 'wp', true, $force );
 
 		if ( ! empty( $update ) && is_array( $update ) ) {
 			$update = $this->format_plugin_update( $update );
@@ -183,11 +183,11 @@ class Updater {
 		$new_version = isset( $data['details']['stable_tag'] ) ? $data['details']['stable_tag'] : '';
 		$tested      = isset( $data['details']['tested'] ) ? $data['details']['tested'] : '';
 
-		if ( version_compare( $new_version, $this->application->getEntity()->getVersion() ) === 1 ) {
+		if ( version_compare( $new_version, $this->configuration->getEntity()->getVersion() ) === 1 ) {
 			$update = array(
-				'slug'        => $this->application->getEntity()->getSlug(),
-				'plugin'      => $this->application->getEntity()->getBasename(),
-				'url'         => $this->application->getEntity()->getPurchaseUrl(),
+				'slug'        => $this->configuration->getEntity()->getSlug(),
+				'plugin'      => $this->configuration->getEntity()->getBasename(),
+				'url'         => $this->configuration->getEntity()->getPurchaseUrl(),
 				'new_version' => $new_version,
 				'tested'      => $tested,
 			);

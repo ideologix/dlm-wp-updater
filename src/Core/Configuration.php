@@ -1,14 +1,13 @@
 <?php
 
-namespace IdeoLogix\DigitalLicenseManagerUpdaterWP;
+namespace IdeoLogix\DigitalLicenseManagerUpdaterWP\Core;
 
-use IdeoLogix\DigitalLicenseManagerUpdaterWP\Core\Utilities;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Http\Client;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Plugin;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Theme;
 
 
-class Application {
+class Configuration {
 
 	/**
 	 * The HTTP Client
