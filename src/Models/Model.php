@@ -63,8 +63,8 @@ class Model {
 		$this->basename    = isset( $args['basename'] ) ? $args['basename'] : null;
 		$this->file        = isset( $args['file'] ) ? $args['file'] : '';
 		$this->version     = isset( $args['version'] ) ? $args['version'] : null;
-		$this->purchaseUrl = isset( $args['url_settings'] ) ? $args['url_settings'] : null;
-		$this->settingsUrl = isset( $args['url_purchase'] ) ? $args['url_purchase'] : null;
+		$this->settingsUrl = isset( $args['url_settings'] ) ? $args['url_settings'] : null;
+		$this->purchaseUrl = isset( $args['url_purchase'] ) ? $args['url_purchase'] : null;
 		$this->prefix      = isset( $args['prefix'] ) ? $args['prefix'] : 'dlm';
 	}
 
