@@ -10,7 +10,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "IdeoLogix\\DigitalLicenseManagerClient\\": "src"
+      "IdeoLogix\\DigitalLicenseManagerUpdaterWP\\": "src"
     }
   },
   "require": {
