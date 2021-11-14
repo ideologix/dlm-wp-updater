@@ -1,5 +1,5 @@
 {
-  "name": "ideologix/dlm-wordpress-updater",
+  "name": "ideologix/dlm-wp-updater",
   "description": "PHP WordPress updater for your plugins and themes that utilizes the Digital License Manager PRO REST APIs",
   "license": "GPL-2.0-or-later",
   "authors": [
