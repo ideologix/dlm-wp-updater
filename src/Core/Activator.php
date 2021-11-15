@@ -199,7 +199,7 @@ class Activator {
 	/**
 	 * Render the activation form
 	 */
-	public function renderActivationForm() {
+	public function renderActivationForm($args = array()) {
 
 		// Purge activation cache
 		if ( $this->clearCache ) {
@@ -226,6 +226,8 @@ class Activator {
 		} else {
 			if ( $token ) {
 				$message = sprintf( __( 'Your license is %s. To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.' ), '<span class="dlm-error">expired</span> or invalid', $this->configuration->getEntity()->getPurchaseUrl() );
+			} else {
+				$message = sprintf( __( 'To get regular updates and support, please <a href="%s" target="_blank">purchase the product</a>.' ), $this->configuration->getEntity()->getPurchaseUrl() );
 			}
 			$button = __( 'Activate' );
 			$action = 'activate';
