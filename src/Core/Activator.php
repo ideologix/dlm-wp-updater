@@ -28,7 +28,7 @@ class Activator {
 	/**
 	 * Activator constructor.
 	 *
-	 * @param  Configuration  $configuration
+	 * @param Configuration $configuration
 	 */
 	public function __construct( $configuration ) {
 
@@ -298,21 +298,36 @@ class Activator {
 	 * @return array|Response|\WP_Error
 	 */
 	private function activateLicense( $key ) {
-		return $this->configuration->getClient()->activateLicense( $key, array(
+
+		$meta = apply_filters( 'dlm_wp_updater_activate_meta', array(
 			'label' => home_url(),
-			'meta'  => array( 'php' => PHP_VERSION )
-		) );
+			'meta'  => array(
+				'entity' => $this->configuration->getEntity()->getId(),
+				'php'    => PHP_VERSION,
+			)
+		), $key, $this->configuration );
+
+		return $this->configuration->getClient()->activateLicense( $key, $meta );
 	}
 
 	/**
 	 * Deactivate license
 	 *
 	 * @param $token
+	 * @param array $params
 	 *
 	 * @return array|Response|\WP_Error
 	 */
 	private function deactivateLicense( $token ) {
-		return $this->configuration->getClient()->deactivateLicense( $token );
+
+		$meta = apply_filters( 'dlm_wp_updater_deactivate_meta', array(
+			'meta' => array(
+				'entity' => $this->configuration->getEntity()->getId(),
+				'php'    => PHP_VERSION,
+			)
+		), $token, $this->configuration );
+
+		return $this->configuration->getClient()->deactivateLicense( $token, $meta );
 	}
 
 	/**

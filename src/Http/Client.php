@@ -115,8 +115,8 @@ class Client {
 	 *
 	 * @return array|\WP_Error
 	 */
-	public function deactivateLicense( $activationToken, $decode = true ) {
-		$result = $this->_get( 'licenses/deactivate/' . $activationToken );
+	public function deactivateLicense( $activationToken, $params = array(), $decode = true ) {
+		$result = $this->_get( 'licenses/deactivate/' . $activationToken, $params );
 
 		return $this->_result( $result, $decode );
 	}
