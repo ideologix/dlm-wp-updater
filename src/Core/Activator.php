@@ -199,7 +199,7 @@ class Activator {
 	/**
 	 * Render the activation form
 	 */
-	public function renderActivationForm($args = array()) {
+	public function renderActivationForm( $args = array() ) {
 
 		// Purge activation cache
 		if ( $this->clearCache ) {
@@ -301,32 +301,32 @@ class Activator {
 	 */
 	private function activateLicense( $key ) {
 
-		$meta = apply_filters( 'dlm_wp_updater_activate_meta', array(
-			'label' => home_url(),
-			'meta'  => array(
-				'entity' => $this->configuration->getEntity()->getId(),
-				'php'    => PHP_VERSION,
+		global $wp_version;
+
+		$params = apply_filters( 'dlm_wp_updater_activate_meta', array(
+			'label'    => home_url(),
+			'software' => $this->configuration->getEntity()->getId(),
+			'meta'     => array(
+				'wp_version'  => $wp_version,
+				'php_version' => PHP_VERSION,
+				'web_server'  => isset( $_SERVER['SERVER_SOFTWARE'] ) ? $_SERVER['SERVER_SOFTWARE'] : null,
 			)
 		), $key, $this->configuration );
 
-		return $this->configuration->getClient()->activateLicense( $key, $meta );
+		return $this->configuration->getClient()->activateLicense( $key, $params );
 	}
 
 	/**
 	 * Deactivate license
 	 *
 	 * @param $token
-	 * @param array $params
 	 *
 	 * @return array|Response|\WP_Error
 	 */
 	private function deactivateLicense( $token ) {
 
 		$meta = apply_filters( 'dlm_wp_updater_deactivate_meta', array(
-			'meta' => array(
-				'entity' => $this->configuration->getEntity()->getId(),
-				'php'    => PHP_VERSION,
-			)
+			'software' => $this->configuration->getEntity()->getId(),
 		), $token, $this->configuration );
 
 		return $this->configuration->getClient()->deactivateLicense( $token, $meta );
