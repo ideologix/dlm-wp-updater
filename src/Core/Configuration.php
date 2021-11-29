@@ -31,9 +31,14 @@ class Configuration {
 	 * Application constructor.
 	 *
 	 * @param $args
-	 * @param string $context
 	 */
-	public function __construct( $args, $context = 'plugin' ) {
+	public function __construct( $args ) {
+
+		// The context
+		$context = ! empty( $args['context'] ) && in_array( $args['context'], array(
+			'theme',
+			'plugin'
+		) ) ? $args['context'] : 'plugin';
 
 		// The entity params
 		$entityArgs = Utilities::arrayOnly( $args, array(
@@ -61,7 +66,7 @@ class Configuration {
 		}
 
 		// The Prefix
-		$this->prefix         = isset( $args['prefix'] ) ? $args['prefix'] : 'dlm';
+		$this->prefix = isset( $args['prefix'] ) ? $args['prefix'] : 'dlm';
 		$entityArgs['prefix'] = $this->prefix;
 		$clientArgs['prefix'] = $this->prefix;
 
