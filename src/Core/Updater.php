@@ -4,6 +4,7 @@ namespace IdeoLogix\DigitalLicenseManagerUpdaterWP\Core;
 
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Core\Configuration;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Http\Response;
+use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Plugin;
 
 class Updater {
 
@@ -17,6 +18,8 @@ class Updater {
 	 * Updater constructor.
 	 *
 	 * @param Configuration $configuration
+	 *
+	 * @throws \Exception
 	 */
 	public function __construct( $configuration ) {
 
@@ -26,12 +29,26 @@ class Updater {
 			throw new \Exception( 'The library is not supported. Please make sure you initialize it within WordPress environment.' );
 		}
 
-		add_filter( 'plugins_api', array( $this, 'modify_plugin_details' ), 10, 3 );
-		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_plugins_transient' ), 10, 1 );
-		add_action( 'in_plugin_update_message-' . $this->configuration->getEntity()->getBasename(), array(
-			$this,
-			'modify_plugin_update_message'
-		), 10, 2 );
+
+		$basename = $this->configuration->getEntity()->getBasename();
+
+		if ( is_a( $this->configuration->getEntity(), Plugin::class ) ) {
+			$hooks = array(
+				'entity_api'                           => 'plugins_api',
+				'pre_set_site_transient_update_entity' => 'pre_set_site_transient_update_plugins',
+				'in_entity_update_message'             => 'in_plugin_update_message-' . $basename
+			);
+		} else {
+			$hooks = array(
+				'entity_api'                           => 'themes_api',
+				'pre_set_site_transient_update_entity' => 'pre_set_site_transient_update_themes',
+				'in_entity_update_message'             => 'in_theme_update_message-' . $basename
+			);
+		}
+
+		add_filter( $hooks['entity_api'], array( $this, 'modify_details' ), 10, 3 );
+		add_filter( $hooks['pre_set_site_transient_update_entity'], array( $this, 'modify_transient' ), 10, 1 );
+		add_action( $hooks['in_entity_update_message'], array( $this, 'modify_update_message' ), 10, 2 );
 	}
 
 	/**
@@ -40,7 +57,7 @@ class Updater {
 	 * @param $plugin_data
 	 * @param $response
 	 */
-	public function modify_plugin_update_message( $plugin_data, $response ) {
+	public function modify_update_message( $plugin_data, $response ) {
 
 		$purchaseUrl = $this->configuration->getEntity()->getPurchaseUrl();
 		$settingsUrl = $this->configuration->getEntity()->getSettingsUrl();
@@ -79,7 +96,7 @@ class Updater {
 	 *
 	 * @return mixed
 	 */
-	public function modify_plugins_transient( $transient ) {
+	public function modify_transient( $transient ) {
 
 		// bail early if no response (error)
 		if ( ! isset( $transient->response ) ) {
@@ -102,7 +119,7 @@ class Updater {
 	}
 
 	/**
-	 * Gather the plugin detials
+	 * Gather the plugin details
 	 *
 	 * @param $result
 	 * @param null $action
@@ -110,7 +127,7 @@ class Updater {
 	 *
 	 * @return object
 	 */
-	public function modify_plugin_details( $result, $action = null, $args = null ) {
+	public function modify_details( $result, $action = null, $args = null ) {
 
 		// Only for 'plugin_information' action
 		if ( $action !== 'plugin_information' ) {
