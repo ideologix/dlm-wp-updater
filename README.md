@@ -4,9 +4,8 @@ Updater package for WordPress that utilizes Digital License Manager PRO api for 
 
 ## Requirements
 
-1. WordPress 5.0+
-2. WooCommerce 4.0+
-3. Digital License Manager PRO
+1. WordPress 4.0+
+2. Digital License Manager PRO (on your plugin update server site)
 
 ## Configuration
 
@@ -19,7 +18,7 @@ Updater package for WordPress that utilizes Digital License Manager PRO api for 
 The PHP package can be imported either with Composer or manually with including the `autoload.php` file:
 
 ```shell
-composer install ideologix/dlm-wordpress-updater
+composer install ideologix/dlm-wp-updater
 ```
 
 or manually, first download the package and save it to your plugin, then include it as follows:
