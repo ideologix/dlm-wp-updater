@@ -2,7 +2,6 @@
 
 namespace IdeoLogix\DigitalLicenseManagerUpdaterWP\Core;
 
-use IdeoLogix\DigitalLicenseManagerUpdaterWP\Core\Configuration;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Http\Response;
 use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Plugin;
 
@@ -29,10 +28,9 @@ class Updater {
 			throw new \Exception( 'The library is not supported. Please make sure you initialize it within WordPress environment.' );
 		}
 
-
 		$basename = $this->configuration->getEntity()->getBasename();
 
-		if ( is_a( $this->configuration->getEntity(), Plugin::class ) ) {
+		if ( $this->is_plugin() ) {
 			$hooks = array(
 				'entity_api'                           => 'plugins_api',
 				'pre_set_site_transient_update_entity' => 'pre_set_site_transient_update_plugins',
@@ -111,7 +109,9 @@ class Updater {
 
 		// append
 		if ( is_array( $update ) && isset( $update['new_version'] ) ) {
-			$transient->response[ $this->configuration->getEntity()->getBasename() ] = (object) $update;
+			$transient->response[ $this->configuration->getEntity()->getBasename() ] = $update;
+		} else if ( is_object( $update ) && isset( $update->new_version ) ) {
+			$transient->response[ $this->configuration->getEntity()->getBasename() ] = $update;
 		}
 
 		// return
@@ -152,7 +152,7 @@ class Updater {
 			return $result;
 		}
 
-		$response = $this->format_plugin_details( $response );
+		$response = $this->format_details( $response );
 		if ( ! $response ) {
 			return $result;
 		}
@@ -166,16 +166,16 @@ class Updater {
 	 *
 	 * @param $force
 	 *
-	 * @return array
+	 * @return array|object
 	 */
 	private function check_update( $force = false ) {
 
 		$update = $this->configuration->getClient()->prepareInfo( $this->configuration->getEntity(), 'wp', true, $force );
 
 		if ( ! empty( $update ) && is_array( $update ) ) {
-			$update = $this->format_plugin_update( $update );
+			$update = $this->format_update_object( $update );
 		}
-
+		
 		return $update;
 	}
 
@@ -186,7 +186,7 @@ class Updater {
 	 *
 	 * @return array
 	 */
-	private function format_plugin_update( $data ) {
+	private function format_update_object( $data ) {
 
 		if ( empty( $data ) ) {
 			return array();
@@ -201,25 +201,34 @@ class Updater {
 		$tested      = isset( $data['details']['tested'] ) ? $data['details']['tested'] : '';
 
 		if ( version_compare( $new_version, $this->configuration->getEntity()->getVersion() ) === 1 ) {
+			$entity = $this->is_plugin() ? 'plugin' : 'theme';
 			$update = array(
 				'slug'        => $this->configuration->getEntity()->getSlug(),
-				'plugin'      => $this->configuration->getEntity()->getBasename(),
+				$entity       => $this->configuration->getEntity()->getBasename(),
 				'url'         => $this->configuration->getEntity()->getPurchaseUrl(),
 				'new_version' => $new_version,
 				'tested'      => $tested,
 			);
 			if ( isset( $data['download_url'] ) && ! empty( $data['download_url'] ) ) {
 				global $wp_version;
-				$params = array(
-					'meta' => array(
-						'wp_version'  => $wp_version,
-						'php_version' => PHP_VERSION,
-						'web_server'  => isset( $_SERVER['SERVER_SOFTWARE'] ) ? $_SERVER['SERVER_SOFTWARE'] : null,
-					)
+				$metadata = array(
+					'wp_version'  => $wp_version,
+					'php_version' => PHP_VERSION,
+					'web_server'  => isset( $_SERVER['SERVER_SOFTWARE'] ) ? sanitize_text_field($_SERVER['SERVER_SOFTWARE']) : null,
 				);
-
-				$update['package'] = add_query_arg( $params, $data['download_url'] );
+				$metadata_formatted = array();
+				foreach ( $metadata as $key => $val ) {
+					$metadata_formatted[ 'meta_' . $key ] = urlencode($val);
+				}
+				$update['package'] = add_query_arg( $metadata_formatted, $data['download_url'] );
 			}
+		}
+
+		/**
+		 * Plugins require the $update to be object.
+		 */
+		if ( $this->is_plugin() ) {
+			$update = (object) $update;
 		}
 
 		return $update;
@@ -232,7 +241,7 @@ class Updater {
 	 *
 	 * @return null
 	 */
-	private function format_plugin_details( $data ) {
+	private function format_details( $data ) {
 
 		if ( empty( $data ) ) {
 			return null;
@@ -243,5 +252,17 @@ class Updater {
 		}
 
 		return $data['details'];
+	}
+
+	/**
+	 * Is plugin?
+	 * @return bool
+	 */
+	private function is_plugin() {
+		if ( empty( $this->configuration ) ) {
+			return false;
+		}
+
+		return is_a( $this->configuration->getEntity(), Plugin::class );
 	}
 }

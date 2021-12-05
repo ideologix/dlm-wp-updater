@@ -434,7 +434,7 @@ class Activator {
 		if ( empty( $message ) ) {
 			return;
 		}
-		echo sprintf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $message['type'], $message['message'] );
+		echo sprintf( '<div class="notice notice-%s is-dismissible"><p>%s</p><button onclick="this.parentNode.parentNode.removeChild(this.parentNode);" type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>', $message['type'], $message['message'] );
 	}
 
 	/**
