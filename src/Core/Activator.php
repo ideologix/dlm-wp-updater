@@ -325,7 +325,7 @@ class Activator {
                 .dlm-info {
                     font-style: italic;
                 }
-                .dlm-error, .dlm-success {
+                .dlm-error, .dlm-success,.dlm-warning {
                     font-weight: bold;
                 }
                 .dlm-success {
@@ -333,6 +333,9 @@ class Activator {
                 }
                 .dlm-error {
                     color: red;
+                }
+                .dlm-warning {
+                	color: #f19440;
                 }
             </style>';
 
