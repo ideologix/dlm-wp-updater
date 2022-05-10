@@ -81,8 +81,8 @@ class Updater {
 			echo '<br/>';
 			echo sprintf(
 				'<strong class="cv-indent-left">Important</strong>: To enable updates, please activate your license key on the <a href="%s">settings</a> page. Need license key? <a target="_blank" href="%s">Purchase one now!</a>.',
-				$purchaseUrl,
-				$settingsUrl
+				$settingsUrl,
+				$purchaseUrl
 			);
 		}
 	}
@@ -175,7 +175,7 @@ class Updater {
 		if ( ! empty( $update ) && is_array( $update ) ) {
 			$update = $this->format_update_object( $update );
 		}
-		
+
 		return $update;
 	}
 
