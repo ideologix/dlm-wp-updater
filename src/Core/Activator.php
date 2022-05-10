@@ -146,6 +146,7 @@ class Activator {
 		$action     = isset( $data['action'] ) ? $data['action'] : null;
 		$licenseKey = isset( $data['license_key'] ) ? trim( sanitize_text_field( $data['license_key'] ) ) : null;
 		$plugin_id  = isset( $data['plugin_id'] ) ? (int) $data['plugin_id'] : null;
+		$is_remove  = isset( $data['remove'] ) ? (bool) $data['remove'] : false;
 
 		// Check the plugin
 		if ( (int) $plugin_id !== (int) $this->configuration->getEntity()->getId() ) {
@@ -160,8 +161,16 @@ class Activator {
 			return;
 		}
 
+		if($is_remove) {
+			$this->configuration->getEntity()->deleteLicenseKey();
+			$this->configuration->getEntity()->deleteActivationToken();
+			$this->setFlashMessage( 'success', __( 'License removed.' ) );
+			$this->redirectBack();
+			return;
+		}
+
 		// Check the actions
-		if ( ! in_array( $action, array( 'activate', 'deactivate' ) ) ) {
+		if ( ! in_array( $action, array( 'activate', 'deactivate', 'reactivate' ) ) ) {
 			$this->setFlashMessage( 'error', __( 'Invalid action.' ) );
 			$this->redirectBack();
 
@@ -191,11 +200,23 @@ class Activator {
 					$this->setFlashMessage( 'error', $message );
 				}
 			}
+		} elseif ( 'reactivate' === $action ) {
+			$token  = $this->configuration->getEntity()->getActivationToken();
+			$result = $this->activateLicense( $licenseKey, $token );
+			if ( ! $result->isError() ) {
+				$this->clearCache = true;
+				$this->configuration->getEntity()->setLicenseKey( $licenseKey );
+				$this->configuration->getEntity()->setActivationToken( $result->getData( 'token' ) );
+				$this->setFlashMessage( 'success', __( 'Congrats! Your key is valid and your product will receive future updates.' ) );
+			} else {
+				$message = $result->getError();
+				if ( ! empty( $message ) ) {
+					$this->setFlashMessage( 'error', $message );
+				}
+			}
 		} elseif ( 'deactivate' === $action ) {
 			$token  = $this->configuration->getEntity()->getActivationToken();
 			$result = $this->deactivateLicense( $token );
-			$this->configuration->getEntity()->deleteLicenseKey();
-			$this->configuration->getEntity()->deleteActivationToken();
 			if ( ! $result->isError() ) {
 				$this->clearCache = true;
 				$this->setFlashMessage( 'success', __( 'The license key is now deactivated and removed.' ) );
@@ -231,8 +252,9 @@ class Activator {
 		 */
 		$token          = $this->configuration->getEntity()->getActivationToken();
 		$license        = $this->configuration->getClient()->prepareValidateLicense( $token );
-		$is_expired     = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 		$deactivated_at = isset( $license['deactivated_at'] ) ? $license['deactivated_at'] : false;
+		$is_expired     = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
+		$is_deactivated = ! empty( $deactivated_at );
 		$expires_at     = isset( $license['license']['expires_at'] ) ? $license['license']['expires_at'] : '';
 		$license_key    = isset( $license['license']['license_key'] ) ? $license['license']['license_key'] : '';
 		$readonly       = ! empty( $license_key ) && ! empty( $license['token'] ) ? 'readonly' : '';
@@ -242,16 +264,30 @@ class Activator {
 		 */
 		if ( ! $is_expired ) {
 
+			$is_permanent = '0000-00-00 00:00:00' === $expires_at || empty( $expires_at );
+
 			$expires_at = Utilities::getFormattedDate( $expires_at );
-			if ( empty( $deactivated_at ) || is_null( $deactivated_at ) ) {
-				$message = sprintf( 'License %s. Expires on %s (%s days remaining)', '<span class="dlm-success">valid</span>', $expires_at['default_format'], $expires_at['remaining_days'] );
-				$button  = __( 'Deactivate' );
-				$action  = 'deactivate';
+			if ( ! $is_deactivated ) {
+
+				if ( $is_permanent ) {
+					$message = sprintf( 'License %s. Activation permanent.', '<span class="dlm-success">valid</span>' );
+					$button  = __( 'Deactivate' );
+					$action  = 'deactivate';
+				} else {
+					$message = sprintf( 'License %s. Expires on %s (%s days remaining)', '<span class="dlm-success">valid</span>', $expires_at['default_format'], $expires_at['remaining_days'] );
+					$button  = __( 'Deactivate' );
+					$action  = 'deactivate';
+				}
+
 			} else {
 				$deactiv_date = Utilities::getFormattedDate( $deactivated_at );
-				$message      = sprintf( 'License %s. Deactivated on %s (%s days remaining)', '<span class="dlm-warning">valid</span>', $deactiv_date['default_format'], $expires_at['remaining_days'] );
-				$button       = __( 'Reactivate' );
-				$action       = 'activate';
+				if ( $is_permanent ) {
+					$message = sprintf( 'License %s. Deactivated on %s (Valid permanently)', '<span class="dlm-warning">valid</span>', $deactiv_date['default_format'] );
+				} else {
+					$message = sprintf( 'License %s. Deactivated on %s (%s days remaining)', '<span class="dlm-warning">valid</span>', $deactiv_date['default_format'], $expires_at['remaining_days'] );
+				}
+				$button = __( 'Reactivate' );
+				$action = 'reactivate';
 			}
 
 		} else {
@@ -286,7 +322,10 @@ class Activator {
 		echo '<div class="dlm-activator-row">';
 		echo sprintf( '<input type="hidden" name="%s" value="%s">', $this->getFieldName( 'action' ), $action );
 		echo sprintf( '<input type="hidden" name="%s" value="%s">', $this->getFieldName( 'plugin_id' ), $this->configuration->getEntity()->getId() );
-		echo sprintf( '<button type="submit" class="%s" name="cv_activator" value="1">%s</button>', $action === 'activate' ? 'button-primary' : 'button', $button );
+		echo sprintf( '<button type="submit" class="%s" name="%s" value="1">%s</button>', in_array($action, array('activate', 'reactivate')) ? 'button-primary' : 'button', $this->getFieldName( 'activator' ), $button );
+		if ( $is_deactivated ) {
+			echo sprintf( '&nbsp;<button type="submit" class="%s" name="%s" value="1" title="%s">%s</button>', 'button', $this->getFieldName( 'remove' ), 'Remove the license key', 'Remove' );
+		}
 		if ( $is_expired ) {
 			echo sprintf( '&nbsp;<a href="%s" class="button-secondary" target="_blank">%s</a>', $this->configuration->getEntity()->getPurchaseUrl(), 'Purchase' );
 		}
@@ -357,11 +396,11 @@ class Activator {
 	 *
 	 * @return array|Response|\WP_Error
 	 */
-	private function activateLicense( $key ) {
+	private function activateLicense( $key, $token = null ) {
 
 		global $wp_version;
 
-		$params = apply_filters( 'dlm_wp_updater_activate_meta', array(
+		$params = array(
 			'label'    => home_url(),
 			'software' => $this->configuration->getEntity()->getId(),
 			'meta'     => array(
@@ -369,7 +408,13 @@ class Activator {
 				'php_version' => PHP_VERSION,
 				'web_server'  => isset( $_SERVER['SERVER_SOFTWARE'] ) ? $_SERVER['SERVER_SOFTWARE'] : null,
 			)
-		), $key, $this->configuration );
+		);
+
+		if ( ! is_null( $token ) ) {
+			$params['token'] = $token;
+		}
+
+		$params = apply_filters( 'dlm_wp_updater_activate_meta', $params, $key, $this->configuration );
 
 		return $this->configuration->getClient()->activateLicense( $key, $params );
 	}
