@@ -251,7 +251,7 @@ class Activator {
 		 * Find existing license?
 		 */
 		$token          = $this->configuration->getEntity()->getActivationToken();
-		$license        = $this->configuration->getClient()->prepareValidateLicense( $token );
+		$license        = $token ? $this->configuration->getClient()->prepareValidateLicense( $token ) : array();
 		$deactivated_at = isset( $license['deactivated_at'] ) ? $license['deactivated_at'] : false;
 		$is_expired     = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 		$is_deactivated = ! empty( $deactivated_at );
