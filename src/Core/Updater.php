@@ -152,6 +152,10 @@ class Updater {
 			return $result;
 		}
 
+		if ( empty( $response['details']['slug'] ) ) {
+			$response['details']['slug'] = $slug;
+		}
+
 		$response = $this->format_details( $response );
 		if ( ! $response ) {
 			return $result;
