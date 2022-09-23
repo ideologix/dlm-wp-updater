@@ -274,7 +274,7 @@ class Client {
 
 		$url     = add_query_arg( $params, trailingslashit( $this->baseUrl ) . ltrim( $path, '/' ) );
 		$headers = array_merge( $this->authHeaders(), $headers );
-		$params  = apply_filters( 'wlm_http_get_params', array( 'timeout' => 5, 'headers' => $headers ), $this );
+		$params  = apply_filters( 'dlm_http_get_params', array( 'timeout' => 5, 'headers' => $headers ), $this );
 
 		return wp_remote_get( $url, $params );
 	}
