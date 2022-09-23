@@ -146,11 +146,11 @@ class Client {
 	 */
 	private function info( $entity, $type = 'wp', $decode = true ) {
 		$softwareId      = $entity->getId();
-		$acitvationToken = $entity->getActivationToken();
+		$activationToken = $entity->getActivationToken();
 
 		$params = array( 'type' => $type );
-		if ( ! empty( $acitvationToken ) ) {
-			$params['activation_token'] = $acitvationToken;
+		if ( ! empty( $activationToken ) ) {
+			$params['activation_token'] = $activationToken;
 		}
 		$result = $this->_get( 'software/' . $softwareId, $params );
 
