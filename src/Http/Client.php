@@ -122,10 +122,11 @@ class Client {
 	}
 
 	/**
-	 * Deactivate license
+	 * Validate an uncached license activation.
 	 *
-	 * @param $activationToken
-	 * @param bool $decode
+	 * @param string $activationToken The license activation token to validate.
+	 * @param bool   $decode          If true (the default), the decoded response is returned,
+	 *                                else the raw response is returned.
 	 *
 	 * @return array|\WP_Error
 	 */
@@ -136,11 +137,13 @@ class Client {
 	}
 
 	/**
-	 * Find remote info
+	 * Returns uncached info about the entity from the remote software server.
 	 *
-	 * @param $entity
-	 * @param string $type
-	 * @param bool $decode
+	 * @param Model  $entity The plugin or theme object.
+	 * @param string $type   If 'wp', the default, then the returned response will include
+	 *                       additional WordPress data in the `details` array.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
 	 *
 	 * @return array|Response|\WP_Error
 	 */
@@ -158,13 +161,37 @@ class Client {
 	}
 
 	/**
-	 * Find remote info (Cached)
+	 * Returns cached info about the entity from the remote software server.
 	 *
-	 * @param Model $entity
-	 * @param string $type
-	 * @param bool $decode
+	 * @param Model  $entity The plugin or theme object.
+	 * @param string $type   If 'wp', the default, then the returned response will include
+	 *                       additional WordPress data in the `details` array.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
+	 * @param bool   $force  If false (the default) and the cached response has not expired,
+	 *                       the cached response is returned, else the response from the
+	 *                       remote server is cached and returned.
 	 *
-	 * @return array
+	 * @return array {
+	 *     @type array  $details {
+	 *         @type string   $last_updated
+	 *         @type string   $name
+	 *         @type float    $requires
+	 *         @type string   $requires_php
+	 *         @type array    $sections {
+	 *             @type string $changlog
+	 *         }
+	 *         @type string   $slug
+	 *         @type string   $stable_tag
+	 *         @type float    $tested
+	 *         @type string[] $versions
+	 *     }
+	 *     @type string $download_url
+	 *     @type string $name
+	 *     @type string $license
+	 *     @type string $url
+	 *     @type string $version
+	 * }
 	 */
 	public function prepareInfo( $entity, $type = 'wp', $decode = true, $force = false ) {
 
@@ -195,13 +222,29 @@ class Client {
 	}
 
 	/**
-	 * Retrieve the license
+	 * Validate a cached license activation.
 	 *
-	 * @param $token
-	 * @param bool $decode
-	 * @param bool $force
+	 * @param string $token  The license activation token to validate.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
+	 * @param bool   $force  If false (the default) and the cached response has not expired,
+	 *                       the cached response is returned, else the response from the
+	 *                       remote server is cached and returned.
 	 *
-	 * @return array
+	 * @return array {
+	 *     @type string      $created_at
+	 *     @type string|null $deactivated_at
+	 *     @type int         $id
+	 *     @type string      $ip_address
+	 *     @type array       $license
+	 *     @type int         $license_id
+	 *     @type string      $label
+	 *     @type array       $meta_data
+	 *     @type int         $source
+	 *     @type string      $token
+	 *     @type string|null $updated_at
+	 *     @type string      $user_agent
+	 * }
 	 */
 	public function prepareValidateLicense( $token, $decode = true, $force = false ) {
 
