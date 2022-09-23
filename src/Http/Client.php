@@ -168,26 +168,30 @@ class Client {
 	 */
 	public function prepareInfo( $entity, $type = 'wp', $decode = true, $force = false ) {
 
-		$cacheResp = false;
-		$cacheTTL  = isset( $this->cacheTTL['info'] ) ? $this->cacheTTL['info'] : 0;
+		$cacheTTL  = $this->cacheTTL['info'] ?? 0;
 		$transient = $this->getUpdateCacheKey( $entity );
-		$response  = $this->info( $entity, $type, $decode );
-
-		if ( $force || $cacheTTL <= 0 ) {
-			if ( $force && $cacheTTL > 0 ) {
-				$cacheResp = true;
-			}
-		} else {
-			$cacheResp = true;
-		}
-
-		if ( $cacheResp && $cacheTTL > 0 ) {
-			if ( ! $response->isError() ) {
-				set_transient( $transient, $response, $cacheTTL );
+		
+		// Return an unexpired cached response.
+		if ( false === $force ) {
+			$responseData = get_transient( $transient );
+			if ( false !== $responseData ) {
+				return $responseData;
 			}
 		}
+		
+		// Get a fresh response.
+		$response = $this->info( $entity, $type, $decode );
 
-		return is_a( $response, Response::class ) ? $response->getData() : array();
+		// If the response is an error, it should be cached only long enough to avoid
+		// additional requests during the lifetime of the current page request.
+		if ( $response->isError() ) {
+			$cacheTTL = 1;
+		}
+		
+		$responseData = is_a( $response, Response::class ) ? $response->getData() : array();
+		set_transient( $transient, $responseData, $cacheTTL );
+
+		return $responseData;
 	}
 
 	/**
@@ -201,26 +205,30 @@ class Client {
 	 */
 	public function prepareValidateLicense( $token, $decode = true, $force = false ) {
 
-		$cacheResp = false;
-		$cacheTTL  = isset( $this->cacheTTL['validateLicense'] ) ? $this->cacheTTL['validateLicense'] : 0;
+		$cacheTTL  = $this->cacheTTL['validateLicense'] ?? 0;
 		$transient = $this->getLicenseCacheKey( $token );
-		$response  = $this->validateLicense( $token, $decode );
-
-		if ( $force || $cacheTTL <= 0 ) {
-			if ( $force && $cacheTTL > 0 ) {
-				$cacheResp = true;
-			}
-		} else {
-			$cacheResp = true;
-		}
-
-		if ( $cacheResp && $cacheTTL > 0 ) {
-			if ( ! $response->isError() ) {
-				set_transient( $transient, $response, $cacheTTL );
+		
+		// Return an unexpired cached response.
+		if ( false === $force ) {
+			$responseData = get_transient( $transient );
+			if ( false !== $responseData ) {
+				return $responseData;
 			}
 		}
+		
+		// Get a fresh response.
+		$response = $this->validateLicense( $token, $decode );
 
-		return is_a( $response, Response::class ) ? $response->getData() : array();
+		// If the response is an error, it should be cached only long enough to avoid
+		// additional requests during the lifetime of the current page request.
+		if ( $response->isError() ) {
+			$cacheTTL = 1;
+		}
+		
+		$responseData = is_a( $response, Response::class ) ? $response->getData() : array();
+		set_transient( $transient, $responseData, $cacheTTL );
+
+		return $responseData;
 	}
 
 
