@@ -122,10 +122,11 @@ class Client {
 	}
 
 	/**
-	 * Deactivate license
+	 * Validate an uncached license activation.
 	 *
-	 * @param $activationToken
-	 * @param bool $decode
+	 * @param string $activationToken The license activation token to validate.
+	 * @param bool   $decode          If true (the default), the decoded response is returned,
+	 *                                else the raw response is returned.
 	 *
 	 * @return array|\WP_Error
 	 */
@@ -136,11 +137,13 @@ class Client {
 	}
 
 	/**
-	 * Find remote info
+	 * Returns uncached info about the entity from the remote software server.
 	 *
-	 * @param $entity
-	 * @param string $type
-	 * @param bool $decode
+	 * @param Model  $entity The plugin or theme object.
+	 * @param string $type   If 'wp', the default, then the returned response will include
+	 *                       additional WordPress data in the `details` array.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
 	 *
 	 * @return array|Response|\WP_Error
 	 */
@@ -158,69 +161,117 @@ class Client {
 	}
 
 	/**
-	 * Find remote info (Cached)
+	 * Returns cached info about the entity from the remote software server.
 	 *
-	 * @param Model $entity
-	 * @param string $type
-	 * @param bool $decode
+	 * @param Model  $entity The plugin or theme object.
+	 * @param string $type   If 'wp', the default, then the returned response will include
+	 *                       additional WordPress data in the `details` array.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
+	 * @param bool   $force  If false (the default) and the cached response has not expired,
+	 *                       the cached response is returned, else the response from the
+	 *                       remote server is cached and returned.
 	 *
-	 * @return array
+	 * @return array {
+	 *     @type array  $details {
+	 *         @type string   $last_updated
+	 *         @type string   $name
+	 *         @type float    $requires
+	 *         @type string   $requires_php
+	 *         @type array    $sections {
+	 *             @type string $changlog
+	 *         }
+	 *         @type string   $slug
+	 *         @type string   $stable_tag
+	 *         @type float    $tested
+	 *         @type string[] $versions
+	 *     }
+	 *     @type string $download_url
+	 *     @type string $name
+	 *     @type string $license
+	 *     @type string $url
+	 *     @type string $version
+	 * }
 	 */
 	public function prepareInfo( $entity, $type = 'wp', $decode = true, $force = false ) {
 
-		$cacheResp = false;
-		$cacheTTL  = isset( $this->cacheTTL['info'] ) ? $this->cacheTTL['info'] : 0;
+		$cacheTTL  = $this->cacheTTL['info'] ?? 0;
 		$transient = $this->getUpdateCacheKey( $entity );
-		$response  = $this->info( $entity, $type, $decode );
-
-		if ( $force || $cacheTTL <= 0 ) {
-			if ( $force && $cacheTTL > 0 ) {
-				$cacheResp = true;
-			}
-		} else {
-			$cacheResp = true;
-		}
-
-		if ( $cacheResp && $cacheTTL > 0 ) {
-			if ( ! $response->isError() ) {
-				set_transient( $transient, $response, $cacheTTL );
+		
+		// Return an unexpired cached response.
+		if ( false === $force ) {
+			$responseData = get_transient( $transient );
+			if ( false !== $responseData ) {
+				return $responseData;
 			}
 		}
+		
+		// Get a fresh response.
+		$response = $this->info( $entity, $type, $decode );
 
-		return is_a( $response, Response::class ) ? $response->getData() : array();
+		// If the response is an error, it should be cached only long enough to avoid
+		// additional requests during the lifetime of the current page request.
+		if ( $response->isError() ) {
+			$cacheTTL = 1;
+		}
+		
+		$responseData = is_a( $response, Response::class ) ? $response->getData() : array();
+		set_transient( $transient, $responseData, $cacheTTL );
+
+		return $responseData;
 	}
 
 	/**
-	 * Retrieve the license
+	 * Validate a cached license activation.
 	 *
-	 * @param $token
-	 * @param bool $decode
-	 * @param bool $force
+	 * @param string $token  The license activation token to validate.
+	 * @param bool   $decode If true (the default), the decoded response is returned,
+	 *                       else the raw response is returned.
+	 * @param bool   $force  If false (the default) and the cached response has not expired,
+	 *                       the cached response is returned, else the response from the
+	 *                       remote server is cached and returned.
 	 *
-	 * @return array
+	 * @return array {
+	 *     @type string      $created_at
+	 *     @type string|null $deactivated_at
+	 *     @type int         $id
+	 *     @type string      $ip_address
+	 *     @type array       $license
+	 *     @type int         $license_id
+	 *     @type string      $label
+	 *     @type array       $meta_data
+	 *     @type int         $source
+	 *     @type string      $token
+	 *     @type string|null $updated_at
+	 *     @type string      $user_agent
+	 * }
 	 */
 	public function prepareValidateLicense( $token, $decode = true, $force = false ) {
 
-		$cacheResp = false;
-		$cacheTTL  = isset( $this->cacheTTL['validateLicense'] ) ? $this->cacheTTL['validateLicense'] : 0;
+		$cacheTTL  = $this->cacheTTL['validateLicense'] ?? 0;
 		$transient = $this->getLicenseCacheKey( $token );
-		$response  = $this->validateLicense( $token, $decode );
-
-		if ( $force || $cacheTTL <= 0 ) {
-			if ( $force && $cacheTTL > 0 ) {
-				$cacheResp = true;
-			}
-		} else {
-			$cacheResp = true;
-		}
-
-		if ( $cacheResp && $cacheTTL > 0 ) {
-			if ( ! $response->isError() ) {
-				set_transient( $transient, $response, $cacheTTL );
+		
+		// Return an unexpired cached response.
+		if ( false === $force ) {
+			$responseData = get_transient( $transient );
+			if ( false !== $responseData ) {
+				return $responseData;
 			}
 		}
+		
+		// Get a fresh response.
+		$response = $this->validateLicense( $token, $decode );
 
-		return is_a( $response, Response::class ) ? $response->getData() : array();
+		// If the response is an error, it should be cached only long enough to avoid
+		// additional requests during the lifetime of the current page request.
+		if ( $response->isError() ) {
+			$cacheTTL = 1;
+		}
+		
+		$responseData = is_a( $response, Response::class ) ? $response->getData() : array();
+		set_transient( $transient, $responseData, $cacheTTL );
+
+		return $responseData;
 	}
 
 
