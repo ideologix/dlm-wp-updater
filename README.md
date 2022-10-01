@@ -1,6 +1,6 @@
-# Digital Licnese Manager WordPress Updater
+# Digital License Manager WordPress Updater
 
-Updater package for WordPress that utilizes Digital License Manager PRO api for update check and update download. It can be integrated in every plugin that you want to provide updates through Digital License Manager PRO.
+Updater package for WordPress that utilizes the Digital License Manager PRO [REST API](https://docs.codeverve.com/digital-license-manager/rest-api/) for update checks and update downloads. It can be integrated in every plugin that you want to provide updates through [Digital License Manager PRO](https://codeverve.com/product/digital-license-manager-pro/).
 
 ## Requirements
 
@@ -9,8 +9,8 @@ Updater package for WordPress that utilizes Digital License Manager PRO api for 
 
 ## Configuration
 
-1. Login to your Digital License Manager store
-2. Go to "License Manager" > "Software" > "Add New" and create software item
+1. Login to your Digital License Manager store.
+2. Go to "License Manager" > "Software" > "Add New" and create software item.
 3. Obtain the software ID and then proceed with the next step **Installation**.
 
 ## Installation
@@ -32,7 +32,6 @@ require_once 'path/to/dlm-wordpress-updater/autoload.php';
 The following example explains how to use the library within your PRO/Premium plugin.
 
 ```php
-
 use \IdeoLogix\DigitalLicenseManagerUpdaterWP\Main;
 
 try {
@@ -53,8 +52,7 @@ try {
     error_log('Error: ' . $e->getMessage());
 }
 
-// Important: To display activation form in your settings page (url_settings) use the renderActivationForm like bellow.
-// Note: If you want to override the activation form, you can extend the Activator class with your own class and override the renderActivationForm method.
-// $instance->getActivator()->renderActivationForm();
-
+// Important: To display the activation form in your settings page (url_settings), use the renderActivationForm() method like bellow.
+// Note: If you want to override the activation form, you can extend the Activator class with your own class and override the renderActivationForm() method.
+$instance->getActivator()->renderActivationForm();
 ```
