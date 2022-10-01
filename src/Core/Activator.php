@@ -44,7 +44,7 @@ class Activator {
 			$file = $this->configuration->getEntity()->getFile();
 			register_activation_hook( $file, array( $this, 'handleAfterActivation' ) );
 		} else {
-			add_action( 'init', array( $this, 'handleAfterActivation' ) );
+			add_action( 'after_switch_theme', array( $this, 'handleAfterActivation' ) );
 		}
 
 		add_action( $this->getAdminPostHookName(), array( $this, 'handleLicenseActivation' ) );
