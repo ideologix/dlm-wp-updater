@@ -48,7 +48,6 @@ class Activator {
 		}
 
 		add_action( $this->getAdminPostHookName(), array( $this, 'handleLicenseActivation' ) );
-		add_action( 'init', array( $this, 'handleLegacyMigration' ) );
 	}
 
 	/**
@@ -59,66 +58,6 @@ class Activator {
 		$hook = $withHook ? 'admin_post_' : '';
 
 		return sprintf( '%sdlm_activate_license_%s', $hook, $this->configuration->getEntity()->getId() );
-	}
-
-	/**
-	 * Migrate legacy license.
-	 * @deprecated
-	 */
-	public function handleLegacyMigration() {
-
-		// 1. Bail if POST request
-		if ( $this->is_http_post ) {
-			return;
-		}
-
-		// 2. Bail if not /wp-admin
-		if ( ! is_admin() ) {
-			return;
-		}
-
-		// 3. Bail if unprivileged
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		$licenseKey      = $this->configuration->getEntity()->getLicenseKey();
-		$activationToken = $this->configuration->getEntity()->getActivationToken();
-
-		// 4. Bail if license key empty or not the XXXX-XXXX-XXXX-XXXX format.
-		if ( empty( $licenseKey ) || 19 !== strlen( trim( $licenseKey ) ) ) {
-			return;
-		}
-
-		// 5. Bail if activation token is set
-		if ( false !== $activationToken ) {
-			return;
-		}
-
-		// Finally, Call the API to obtain activation token.
-		$result = $this->activateLicense( $licenseKey );
-
-		// Set the token, if any. IF license is expired, remove license key.
-		if ( ! $result->isError() ) {
-			$token = $result->getData( 'token' );
-			if ( ! empty( $token ) ) {
-				$this->configuration->getEntity()->setActivationToken( $token );
-				delete_site_transient( 'update_plugins' );
-			}
-		} else {
-			$codes = array(
-				'dlm_rest_license_expired',
-				'dlm_rest_license_disabled',
-				'dlm_rest_license_activation_limit_reached',
-				'wlm_rest_license_expired',
-				'wlm_rest_license_disabled',
-				'wlm_rest_license_activation_limit_reached'
-			);
-			if ( in_array( $result->getCode(), $codes ) ) {
-				$this->configuration->getEntity()->deleteLicenseKey();
-			}
-			error_log( 'CodeVerve Activation: ' . $result->getError() );
-		}
 	}
 
 	/**
@@ -222,6 +161,7 @@ class Activator {
 				$this->setFlashMessage( 'success', __( 'The license key is now deactivated and removed.' ) );
 			} else {
 				$message = $result->getError();
+				$this->clearCache = true;
 				if ( ! empty( $message ) ) {
 					$this->setFlashMessage( 'error', $message );
 				}
@@ -251,7 +191,7 @@ class Activator {
 		 * Find existing license?
 		 */
 		$token          = $this->configuration->getEntity()->getActivationToken();
-		$license        = $token ? $this->configuration->getClient()->prepareValidateLicense( $token ) : array();
+		$license        = $token ? $this->configuration->getClient()->prepareValidateLicense( $token, true, true ) : array();
 		$deactivated_at = isset( $license['deactivated_at'] ) ? $license['deactivated_at'] : false;
 		$is_expired     = isset( $license['license']['is_expired'] ) ? (bool) $license['license']['is_expired'] : true;
 		$is_deactivated = ! empty( $deactivated_at );
