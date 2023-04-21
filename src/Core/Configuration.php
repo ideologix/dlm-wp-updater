@@ -168,6 +168,7 @@ class Configuration {
 			'activator.word_activate'                    => 'Activate',
 			'activator.word_reactivate'                  => 'Reactivate',
 			'activator.word_purchase'                    => 'Purchase',
+			'activator.word_renew'                       => 'Renew',
 			'activator.word_remove'                      => 'Remove',
 			'activator.word_product_key'                 => 'Product Key',
 			'activator.help_remove'                      => 'Remove the license key',

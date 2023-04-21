@@ -101,6 +101,10 @@ class Activator {
 		}
 
 		if ( $is_remove ) {
+			$token = $this->configuration->getEntity()->getActivationToken();
+			if ( $token ) {
+				$this->deactivateLicense( $token );
+			}
 			$this->configuration->getEntity()->deleteLicenseKey();
 			$this->configuration->getEntity()->deleteActivationToken();
 			$this->setFlashMessage( 'success', $this->configuration->label( 'activator.license_removed' ) );
@@ -288,10 +292,10 @@ class Activator {
 		/**
 		 * Print the activation and deactivation form
 		 */
-		echo '<form method="POST" action="' . esc_url(admin_url( 'admin-post.php' )) . '">';
-		echo '<input type="hidden" name="action" value="' . esc_attr($this->getAdminPostHookName( false )) . '">';
+		echo '<form method="POST" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( $this->getAdminPostHookName( false ) ) . '">';
 		echo '<div class="dlm-activator-row">';
-		echo sprintf( '<label>%s</label>', $this->configuration->label('activator.word_product_key') );
+		echo sprintf( '<label>%s</label>', $this->configuration->label( 'activator.word_product_key' ) );
 		echo sprintf(
 			'<input type="%s" %s name="%s" value="%s" placeholder="%s">',
 
@@ -299,32 +303,42 @@ class Activator {
 			$readonly,
 			$this->getFieldName( 'license_key' ),
 			$license_key,
-			$this->configuration->label('activator.help_product_key')
+			$this->configuration->label( 'activator.help_product_key' )
 		);
 		if ( ! empty( $message ) ) {
 			echo sprintf( '<p class="dlm-info">%s</p>', $message );
 		}
 		echo '</div>';
 		echo '<div class="dlm-activator-row">';
-		echo sprintf( '<input type="hidden" name="%s" value="%s">', esc_attr($this->getFieldName( 'action' )), esc_attr($action) );
-		echo sprintf( '<input type="hidden" name="%s" value="%s">', esc_attr($this->getFieldName( 'plugin_id' )), esc_attr($this->configuration->getEntity()->getId()) );
-		echo sprintf( '<button type="submit" class="%s" name="%s" value="1">%s</button>', in_array( $action, array( 'activate', 'reactivate' ) ) ? 'button-primary' : 'button', esc_attr($this->getFieldName( 'activator' )), esc_attr($button) );
-		if ( $is_deactivated ) {
+		echo sprintf( '<input type="hidden" name="%s" value="%s">', esc_attr( $this->getFieldName( 'action' ) ), esc_attr( $action ) );
+		echo sprintf( '<input type="hidden" name="%s" value="%s">', esc_attr( $this->getFieldName( 'plugin_id' ) ), esc_attr( $this->configuration->getEntity()->getId() ) );
+
+		if ( $is_expired && ! empty( $license_key ) ) {
+			echo sprintf(
+				'&nbsp;<a href="%s" class="button-primary" target="_blank">%s</a>',
+				$this->configuration->getEntity()->getPurchaseUrl(),
+				$this->configuration->label( 'activator.word_renew' )
+			);
 			echo sprintf(
 				'&nbsp;<button type="submit" class="%s" name="%s" value="1" title="%s">%s</button>',
-				'button',
+				'button-secondary',
 				$this->getFieldName( 'remove' ),
-				$this->configuration->label('activator.help_remove'),
-				$this->configuration->label('activator.word_remove')
+				$this->configuration->label( 'activator.help_remove' ),
+				$this->configuration->label( 'activator.word_remove' )
 			);
+		} else {
+			echo sprintf( '<button type="submit" class="%s" name="%s" value="1">%s</button>', in_array( $action, array( 'activate', 'reactivate' ) ) ? 'button-primary' : 'button', esc_attr( $this->getFieldName( 'activator' ) ), esc_attr( $button ) );
+			if ( $is_deactivated ) {
+				echo sprintf(
+					'&nbsp;<button type="submit" class="%s" name="%s" value="1" title="%s">%s</button>',
+					'button',
+					$this->getFieldName( 'remove' ),
+					$this->configuration->label( 'activator.help_remove' ),
+					$this->configuration->label( 'activator.word_remove' )
+				);
+			}
 		}
-		if ( $is_expired ) {
-			echo sprintf(
-				'&nbsp;<a href="%s" class="button-secondary" target="_blank">%s</a>',
-				$this->configuration->getEntity()->getPurchaseUrl(),
-				$this->configuration->label('activator.word_purchase')
-			);
-		}
+
 		echo '</div>';
 		echo '</form>';
 
