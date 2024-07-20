@@ -75,7 +75,7 @@ class Model {
 	public function getLicenseKey() {
 		$key = $this->getLicenseKeyOptionName();
 
-		return get_option( $key );
+		return get_site_option( $key );
 	}
 
 	/**
@@ -95,7 +95,7 @@ class Model {
 	 */
 	public function setLicenseKey( $key ) {
 		$name = $this->getLicenseKeyOptionName();
-		update_option( $name, $key );
+		update_site_option( $name, $key );
 	}
 
 	/**
@@ -103,7 +103,7 @@ class Model {
 	 */
 	public function deleteLicenseKey() {
 		$name = $this->getLicenseKeyOptionName();
-		delete_option( $name );
+		delete_site_option( $name );
 	}
 
 	/**
@@ -114,7 +114,7 @@ class Model {
 	public function getActivationToken() {
 		$name = $this->getActivationTokenOptionName();
 
-		return get_option( $name );
+		return get_site_option( $name );
 	}
 
 	/**
@@ -134,7 +134,7 @@ class Model {
 	 */
 	public function setActivationToken( $token ) {
 		$name = $this->getActivationTokenOptionName( $token );
-		update_option( $name, $token );
+		update_site_option( $name, $token );
 	}
 
 	/**
@@ -142,7 +142,7 @@ class Model {
 	 */
 	public function deleteActivationToken() {
 		$name = $this->getActivationTokenOptionName();
-		delete_option( $name );
+		delete_site_option( $name );
 	}
 
 	/**
