@@ -10,6 +10,12 @@ use IdeoLogix\DigitalLicenseManagerUpdaterWP\Models\Theme;
 class Configuration {
 
 	/**
+	 * The args backup
+	 * @var array
+	 */
+	protected $_args = [];
+
+	/**
 	 * The HTTP Client
 	 * @var Client
 	 */
@@ -45,6 +51,8 @@ class Configuration {
 	 * @param $args
 	 */
 	public function __construct( $args ) {
+
+		$this->_args = $args;
 
 		// The context
 		$context = ! empty( $args['context'] ) && in_array( $args['context'], array(
@@ -92,15 +100,32 @@ class Configuration {
 		// The Client Object
 		$this->client = new Client( $clientArgs );
 
-		// Setup the labels
-		$this->labels = $this->getDefaultLabels();
-		if ( ! empty( $args['labels'] ) && is_array( $args['labels'] ) ) {
-			$this->labels = array_merge( $this->labels, $args['labels'] );
-		}
+		// Set-up the labels
+		$this->labels = $this->getDefaultLabels(); // Defaults.
+		add_action('init', [$this, 'setupLabels']); // Overrides.
 
 		//Other...
 		if ( isset( $args['mask_key_input'] ) ) {
 			$this->mask_key_input = (bool) $args['mask_key_input'];
+		}
+	}
+
+
+	/**
+	 * Setup the labels
+	 * @return void
+	 */
+	public function setupLabels() {
+		if ( isset( $this->_args['labels'] ) && is_callable( $this->_args['labels'] ) ) {
+			$newLabels = call_user_func( $this->_args['labels'] );
+			if ( empty( $newLabels ) ) {
+				return;
+			}
+			foreach ( $newLabels as $key => $label ) {
+				if ( isset( $this->labels[ $key ] ) ) {
+					$this->labels[ $key ] = $newLabels[ $key ];
+				}
+			}
 		}
 	}
 
